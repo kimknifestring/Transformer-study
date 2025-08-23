@@ -27,20 +27,17 @@ m = model.to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 
 # 훈련 루프
-for iter in range(MAX_ITERS):
-    if iter % EVAL_INTERVAL == 0:
-        xb, yb = dataset.get_batch('val')
-        xb, yb = xb.to(DEVICE), yb.to(DEVICE)
-        logits, loss = model(xb, yb)
-        print(f"step {iter}: val loss {loss.item():.4f}")
-
+for iter in range(1+MAX_ITERS+1):
     xb, yb = dataset.get_batch('train')
     xb, yb = xb.to(DEVICE), yb.to(DEVICE)
-    
     logits, loss = model(xb, yb)
+    
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+
+    if iter % EVAL_INTERVAL == 0:
+        print(f"step {iter}: val loss {loss.item():.4f}")
 
 # 훈련된 모델로 텍스트 생성
 context = torch.zeros((1, 1), dtype=torch.long, device=DEVICE)
