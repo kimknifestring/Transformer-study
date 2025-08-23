@@ -7,7 +7,7 @@ from model import BigramLanguageModel
 
 # 하이퍼파라미터
 SCRIPT_DIR = Path(__file__).parent.parent.resolve()
-FILE_PATH = SCRIPT_DIR.parent / '한국어 대화 데이터셋.txt'
+FILE_PATH = SCRIPT_DIR.parent / '데이터셋.txt'
 BATCH_SIZE = 32
 BLOCK_SIZE = 8
 MAX_ITERS = 3000
