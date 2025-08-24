@@ -2,7 +2,7 @@
 
 import torch
 
-class ShakespeareDataset:
+class Dataset:
     def __init__(self, file_path, block_size, batch_size, split_ratio=0.9):
         with open(file_path, 'r', encoding='utf-8') as f:
             text = f.read()
