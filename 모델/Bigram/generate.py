@@ -13,8 +13,8 @@ vocab_size = dataset.vocab_size
 model = BigramLanguageModel(vocab_size)
 model.to(config.DEVICE)
 
-# 저장된 가중치(state_dict)를 불러옵니다.
-model.load_state_dict(torch.load(config.MODEL_PATH))
+# 저장된 가중치(state_dict)를 불러옴
+model.load_state_dict(torch.load(config.MODEL_PATH,weights_only=True))
 
 # train 상태 해제(Bigram에서는 의미없지만 습관을 들이기 위해 사용함)
 model.eval()
