@@ -35,7 +35,18 @@ class TransformerLanguageModel(nn.Module):
             targets = targets.view(B*T)
             loss = F.cross_entropy(logits, targets)
         return logits, loss
+    
+    def generate(self, idx, max_new_tokens):
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -config.BLOCK_SIZE:]
+            logits, loss = self(idx_cond)
 
+            logits = logits[:, -1, :] 
+            probs = F.softmax(logits, dim=-1) 
+            
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
+            yield idx_next
 # 단일 어텐션 헤드 (Q,K,V)
 class Head(nn.Module):
     def __init__(self, head_size):

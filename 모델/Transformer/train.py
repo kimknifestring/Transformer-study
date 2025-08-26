@@ -19,6 +19,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=config.LEARNING_RATE)
 
 # 훈련 루프
 for iter in range(1,config.MAX_ITERS+1):
+    print(f"{iter} iter")
     # 데이터 배치 가져오기
     xb, yb = dataset.get_batch('train')
     xb, yb = xb.to(config.DEVICE), yb.to(config.DEVICE)
