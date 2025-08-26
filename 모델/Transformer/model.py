@@ -47,7 +47,7 @@ class Head(nn.Module):
 
         """
         Attention Is All You Need 에서 이를 해결하기 위해
-        wei를 Key 벡터 차원의 제곱근으로 나누어 분산을 1로 유지시켜 Softmax에 항상
+        wei를 Key 벡터 차원의 제곱근으로 나누어 Softmax에 항상
         적당한 크기의 값이 들어가도록 조절했다.
         """
 
@@ -74,5 +74,13 @@ class Head(nn.Module):
         # q(자기 자신)에 대한 k(다른 단어)들의 관계와 v(자신의 뜻) 모두가 하나의 정보로 가공됨
         return out
 
-
-        
+class MultiHeadAttention(nn.Module):
+    def __init__(self, num_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head](head_size) for _ in range(num_heads))
+        # 헤드의 출력값들을 적절히 섞을 가중치
+        self.proj = nn.Linear(config.N_EMBD, config.N_EMBD)
+    def forward(self,x):
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.proj(out)
+        return out
