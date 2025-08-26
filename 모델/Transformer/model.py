@@ -4,15 +4,19 @@ from torch.nn import functional as F
 import config
 import math
 
-class TranformerLangugeModel(nn.Module):
+class TransformerLanguageModel(nn.Module):
     def __init__(self,vocab_size):
         super().__init__()
         # 단어들을 벡터 임베딩
         self.token_embedding_table = nn.Embedding(vocab_size, config.N_EMBD)
         # 문장에서의 위치 정보를 임베딩(이것과 임베딩된 벡터를 잘 사용하면 문맥을 파악하는 것이 가능해짐)
         self.position_embedding_table = nn.Embedding(config.BLOCK_SIZE, config.N_EMBD)
-    
-    def forward(self, idx, target=None):
+
+        self.blocks = nn.Sequential(*[Block(config.N_EMBD, n_head=config.N_HEAD) for _ in range(config.N_LAYER)])
+        self.ln_f = nn.LayerNorm(config.N_EMBD)
+        self.lm_head = nn.Linear(config.N_EMBD, vocab_size)
+
+    def forward(self, idx, targets=None):
         B, T = idx.shape
         # 단어가 가지는 의미
         tok_emb = self.token_embedding_table(idx) # 결과 모양:(B,T,C)
@@ -20,6 +24,17 @@ class TranformerLangugeModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=config.DEVICE)) # 결과 모양: (T, C)
         # 원랜 형식이 맞지 않아 더할 수 없지만 Pytorch의 브로드캐스팅(작은 텐서를 자동으로 확장하여 큰 텐서와 맞춰 연산이 가능하게 만듬)을 사용하여 더할 수 있음
         x = tok_emb + pos_emb
+        x = self.blocks(x)
+        x = self.ln_f(x)
+        logits = self.lm_head(x)
+        if targets is None:
+            loss = None
+        else:
+            B, T, C = logits.shape
+            logits = logits.view(B*T, C)
+            targets = targets.view(B*T)
+            loss = F.cross_entropy(logits, targets)
+        return logits, loss
 
 # 단일 어텐션 헤드 (Q,K,V)
 class Head(nn.Module):
@@ -57,7 +72,7 @@ class Head(nn.Module):
         """
         # 행렬곱을 위해 k를 알맞게 전치
         # 내 q(질문)을 기준으로 다른k(키워드)들이 어떤 연관관계가 있는지 구함
-        wei = q @ k.transpose(-2, -1) / math.sqrt(C) # (B, T, T)
+        wei = q @ k.transpose(-2, -1) / math.sqrt(k.shape[-1]) # (B, T, T)
 
         """
         이 시점에서 wei는 문장 전체에 대한 정보를 품고 있으니 이로 학습하면
@@ -77,7 +92,7 @@ class Head(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
-        self.heads = nn.ModuleList([Head](head_size) for _ in range(num_heads))
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         # 헤드의 출력값들을 적절히 섞을 가중치
         self.proj = nn.Linear(config.N_EMBD, config.N_EMBD)
     def forward(self,x):
@@ -95,6 +110,8 @@ class FeedForward(nn.Module):
             nn.ReLU(),
             nn.Linear(4 * n_embd, n_embd)
         )
+    def forward(self,x):
+        return self.net(x)
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head):
@@ -105,6 +122,6 @@ class Block(nn.Module):
         # 층 정규화 두번
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
-    def FeedForward(self,x):
+    def forward(self,x):
         x += self.sa(self.ln1(x))
         x += self.ffwd(self.ln2(x))
