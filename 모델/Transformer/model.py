@@ -125,3 +125,4 @@ class Block(nn.Module):
     def forward(self,x):
         x += self.sa(self.ln1(x))
         x += self.ffwd(self.ln2(x))
+        return x
