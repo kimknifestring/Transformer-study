@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import config
+import math
 
 class TranformerLangugeModel(nn.Module):
     def __init__(self,vocab_size):
@@ -20,8 +21,58 @@ class TranformerLangugeModel(nn.Module):
         # 원랜 형식이 맞지 않아 더할 수 없지만 Pytorch의 브로드캐스팅(작은 텐서를 자동으로 확장하여 큰 텐서와 맞춰 연산이 가능하게 만듬)을 사용하여 더할 수 있음
         x = tok_emb + pos_emb
 
+# 단일 어텐션 헤드 (Q,K,V)
 class Head(nn.Module):
     def __init__(self, head_size):
         super().__init__()
+        # 층 정규화(Layer Normalization)에서 bias와 유사한 역할을 하기 때문에 bias는 비활성화하였음
+        self.query = nn.Linear(config.N_EMBD, head_size, bias=False)
+        self.key = nn.Linear(config.N_EMBD, head_size, bias=False)
+        self.value = nn.Linear(config.N_EMBD, head_size, bias=False)
+
+        # 하삼각행렬을 사용, 어떤 토큰에서 자신보다 미래에 있는 토큰을 보는 것을 차단함
+        # 그리고 이 하삼각행렬은 학습용 파라미터가 아니니 기울기 계산에서 제외
+        self.register_buffer('tril',torch.tril(torch.ones(config.BLOCK_SIZE, config.BLOCK_SIZE)))
+
+    def forward(self,x):
+        B, T, C = x.shape
+        k = self.key(x) # (B, T, head_size)
+        q = self.query(x) # (B, T, head_size)
+        # scaled_dot_product_attention 으로 스케일링함
+        """
+        벡터의 차원이 올라갈수록 내적의 결과가 더 커지는 경향성이 있는데,
+        이렇게 매우 커진 내적 값이 Softmax에 입력되면
+        그 값의 확률이 1에 수렴하고 나머지 값들의 확률이 0에 수렴하게 되는 문제가 있다. 
+        """
+
+        """
+        Attention Is All You Need 에서 이를 해결하기 위해
+        wei를 Key 벡터 차원의 제곱근으로 나누어 분산을 1로 유지시켜 Softmax에 항상
+        적당한 크기의 값이 들어가도록 조절했다.
+        """
+
+        """
+        제곱근으로 나누는 이유는 내적 값의 표준편차가 C의 제곱근에 비례하여 커지므로
+        이를 상쇄하기 위함
+        """
+        # 행렬곱을 위해 k를 알맞게 전치
+        # 내 q(질문)을 기준으로 다른k(키워드)들이 어떤 연관관계가 있는지 구함
+        wei = q @ k.transpose(-2, -1) / math.sqrt(C) # (B, T, T)
+
+        """
+        이 시점에서 wei는 문장 전체에 대한 정보를 품고 있으니 이로 학습하면
+        예측이 아니라 그냥 문장을 받아쓰는 법을 배움, 정보의 제한이 필요함
+        """
+
+        # Masking 기법
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = F.softmax(wei, dim=-1) # (B, T, T)
+
+        v = self.value(x) # (B, T, head_size)
+        out = wei @ v # (B, T, head_size)
+
+        # q(자기 자신)에 대한 k(다른 단어)들의 관계와 v(자신의 뜻) 모두가 하나의 정보로 가공됨
+        return out
+
 
         
