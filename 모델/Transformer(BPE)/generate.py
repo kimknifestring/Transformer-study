@@ -24,13 +24,14 @@ print("Model loaded successfully.")
 
 # 텍스트 생성
 # start_context = '\n'
-start_context = input("예측할 문장을 입력:")
-context = torch.tensor([tokenizer.encode(start_context)], dtype=torch.long, device=config.DEVICE)
+while True:
+    start_context = input("예측할 문장을 입력:")
+    context = torch.tensor([tokenizer.encode(start_context)], dtype=torch.long, device=config.DEVICE)
 
-print("\n--- 트랜스포머 아키텍쳐로 생성된 텍스트: ---")
-print(start_context,end='')
-for token_tensor in m.generate(context, max_new_tokens=config.MAX_TOKEN):
-    new_char = tokenizer.decode([token_tensor.item()])
-    print(new_char, end='', flush=True)
+    print("\n--- 트랜스포머 아키텍쳐로 생성된 텍스트: ---")
+    print(start_context,end='')
+    for token_tensor in m.generate(context, max_new_tokens=config.MAX_TOKEN):
+        new_char = tokenizer.decode([token_tensor.item()])
+        print(new_char, end='', flush=True)
 
-print()
+    print()
