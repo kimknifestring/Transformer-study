@@ -1,10 +1,12 @@
+# train.py
+
 import torch
 import config
 from model import TransformerLanguageModel
 from dataset import Dataset 
 
 # 데이터 준비
-dataset = Dataset(config.FILE_PATH, config.BLOCK_SIZE, config.BATCH_SIZE)
+dataset = Dataset()
 vocab_size = dataset.vocab_size
 
 # 모델 생성

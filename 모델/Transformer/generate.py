@@ -4,7 +4,7 @@ from model import TransformerLanguageModel
 from dataset import Dataset
 
 # 데이터 준비
-dataset = Dataset(config.FILE_PATH, config.BLOCK_SIZE, config.BATCH_SIZE)
+dataset = Dataset()
 print(dataset.stoi)
 vocab_size = dataset.vocab_size
 

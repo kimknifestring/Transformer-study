@@ -1,28 +1,36 @@
+# dataset.py
+
 import torch
 import config
-from tokenizers import Tokenizer
+from datasets import load_dataset
+from transformers import AutoTokenizer
+from tqdm import tqdm
 class Dataset:
-    def __init__(self, file_path, block_size, batch_size):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            text = f.read()
+    def __init__(self):
+        print("데이터셋 불러오는 중...")
+        # Hugging Face Hub에서 사전 훈련된 토크나이저 불러오기
+        self.tokenizer = AutoTokenizer.from_pretrained(config.TOKENIZER_ID)
         
-        self.block_size = block_size
-        self.batch_size = batch_size
-
-        # 토크나이저 불러오기
-        tokenizer_path = config.VOCAB_DIR / "tokenizer.json"
-        self.tokenizer = Tokenizer.from_file(str(tokenizer_path))
-    
-        self.vocab_size = self.tokenizer.get_vocab_size()
-
-        self.encode = lambda s: self.tokenizer.encode(s).ids
-        self.decode = lambda l: self.tokenizer.decode(l)
-
-        # 데이터 분할
-        data = torch.tensor(self.encode(text), dtype=torch.long)
-        n = int(0.9 * len(data)) # 90% train, 10% val
+        # Hugging Face Hub에서 데이터셋 불러오기
+        raw_dataset = load_dataset(config.DATASET_ID)
+        
+        # 데이터셋의 각 항목을 하나의 긴 텍스트로 결합
+        # Ko-Alpaca는 instruction, output 컬럼이 있으므로 이를 합침
+        text_data = ""
+        for item in tqdm(raw_dataset['train'], desc="데이터셋 텍스트 합치는 중..."):
+            text_data += item['instruction'] + "\n" + item['output'] + "\n"
+            
+        # 전체 텍스트를 인코딩하고 데이터 분할
+        data = torch.tensor(self.tokenizer.encode(text_data), dtype=torch.long)
+        n = int(0.9 * len(data))
         self.train_data = data[:n]
         self.val_data = data[n:]
+
+        # 필요한 속성들 설정
+        self.vocab_size = self.tokenizer.vocab_size
+        self.block_size = config.BLOCK_SIZE
+        self.batch_size = config.BATCH_SIZE
+        print("완료됨.")
 
     def get_batch(self, split):
         data = self.train_data if split == 'train' else self.val_data

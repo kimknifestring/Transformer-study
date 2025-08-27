@@ -1,3 +1,5 @@
+# model.py
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -6,6 +8,7 @@ import math
 
 class TransformerLanguageModel(nn.Module):
     def __init__(self,vocab_size):
+        print("모델을 불러오는 중...")
         super().__init__()
         # 단어들을 벡터 임베딩
         self.token_embedding_table = nn.Embedding(vocab_size, config.N_EMBD)
@@ -15,6 +18,7 @@ class TransformerLanguageModel(nn.Module):
         self.blocks = nn.Sequential(*[Block(config.N_EMBD, n_head=config.N_HEAD) for _ in range(config.N_LAYER)])
         self.ln_f = nn.LayerNorm(config.N_EMBD)
         self.lm_head = nn.Linear(config.N_EMBD, vocab_size)
+        print("완료됨")
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -105,7 +109,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         # 헤드의 출력값들을 적절히 섞을 가중치
-        self.proj = nn.Linear(config.N_EMBD, config.N_EMBD)
+        self.proj = nn.Linear(num_heads * head_size, config.N_EMBD)
     def forward(self,x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
         out = self.proj(out)
